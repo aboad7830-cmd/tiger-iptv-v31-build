@@ -1,0 +1,47 @@
+name: Build TIGER IPTV IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: |
+          set -e
+          for candidate in /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode_16.2.app /Applications/Xcode_16.1.app /Applications/Xcode_16.0.app /Applications/Xcode.app; do
+            if [ -d "$candidate" ]; then
+              sudo xcode-select -s "$candidate"
+              echo "Selected $candidate"
+              break
+            fi
+          done
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build unsigned IPA
+        working-directory: ios
+        run: |
+          set -e
+          chmod +x build_ipa.sh
+          chmod +x tiger-iptv/scripts/*.sh
+          ./build_ipa.sh --unsigned
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TIGER-IPTV-unsigned-ipa
+          path: ios/build/export/*.ipa
+          if-no-files-found: error
+          retention-days: 30
